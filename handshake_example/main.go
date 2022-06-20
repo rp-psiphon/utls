@@ -40,8 +40,6 @@ func TlsHandshake(hostname string, addr string) error {
 	uTlsConn := tls.UClient(dialConn, &config, tls.HelloCustom)
 	defer uTlsConn.Close()
 
-	// do not use this particular spec in production
-	// make sure to generate a separate copy of ClientHelloSpec for every connection
 	spec := GenerateSpec("hi")
 	err = uTlsConn.ApplyPreset(&spec)
 
