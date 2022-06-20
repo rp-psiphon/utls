@@ -295,6 +295,52 @@ func (e *ALPNExtension) Read(b []byte) (int, error) {
 	return e.Len(), io.EOF
 }
 
+type ALPSExtension struct {
+	SupportedProtocols []string
+}
+
+func (e *ALPSExtension) writeToUConn(uc *UConn) error {
+	return nil
+}
+
+func (e *ALPSExtension) Len() int {
+	bLen := 2 + 2 + 2 // Type + Length + ALPS Extension length
+	for _, s := range e.SupportedProtocols {
+		bLen += 1 + len(s) // Supported ALPN Length + actual length of protocol
+	}
+	return bLen
+}
+
+func (e *ALPSExtension) Read(b []byte) (int, error) {
+	if len(b) < e.Len() {
+		return 0, io.ErrShortBuffer
+	}
+
+	// Read Type.
+	b[0] = byte(extensionALPS >> 8)   // hex: 44 dec: 68
+	b[1] = byte(extensionALPS & 0xff) // hex: 69 dec: 105
+
+	lengths := b[2:] // get the remaining buffer without Type
+	b = b[6:]        // set the buffer to the buffer without Type, Length and ALPS Extension Length (so only the Supported ALPN list remains)
+
+	stringsLength := 0
+	for _, s := range e.SupportedProtocols {
+		l := len(s)            // Supported ALPN Length
+		b[0] = byte(l)         // Supported ALPN Length in bytes hex: 02 dec: 2
+		copy(b[1:], s)         // copy the Supported ALPN as bytes to the buffer
+		b = b[1+l:]            // set the buffer to the buffer without the Supported ALPN Length and Supported ALPN (so we can continue to the next protocol in this loop)
+		stringsLength += 1 + l // Supported ALPN Length (the field itself) + Supported ALPN Length (the value)
+	}
+
+	lengths[2] = byte(stringsLength >> 8) // ALPS Extension Length hex: 00 dec: 0
+	lengths[3] = byte(stringsLength)      // ALPS Extension Length hex: 03 dec: 3
+	stringsLength += 2                    // plus ALPS Extension Length field length
+	lengths[0] = byte(stringsLength >> 8) // Length hex:00 dec: 0
+	lengths[1] = byte(stringsLength)      // Length hex: 05 dec: 5
+
+	return e.Len(), io.EOF
+}
+
 type SCTExtension struct {
 }
 
@@ -513,6 +559,49 @@ func (e *UtlsPaddingExtension) Read(b []byte) (int, error) {
 	return e.Len(), io.EOF
 }
 
+// UtlsCompressCertExtension is only implemented client-side, for server certificates. Alternate
+// certificate message formats (https://datatracker.ietf.org/doc/html/rfc7250) are not supported.
+//
+// See https://datatracker.ietf.org/doc/html/rfc8879#section-3
+type UtlsCompressCertExtension struct {
+	Methods []CertCompressionAlgo
+}
+
+func (e *UtlsCompressCertExtension) writeToUConn(uc *UConn) error {
+	uc.certCompressionAlgs = e.Methods
+	return nil
+}
+
+func (e *UtlsCompressCertExtension) Len() int {
+	return 4 + 1 + (2 * len(e.Methods))
+}
+
+func (e *UtlsCompressCertExtension) Read(b []byte) (int, error) {
+	if len(b) < e.Len() {
+		return 0, io.ErrShortBuffer
+	}
+	// https://tools.ietf.org/html/draft-balfanz-tls-channelid-00
+	b[0] = byte(utlsExtensionCompressCertificate >> 8)
+	b[1] = byte(utlsExtensionCompressCertificate & 0xff)
+
+	extLen := 2 * len(e.Methods)
+	if extLen > 255 {
+		return 0, errors.New("too many certificate compression methods")
+	}
+
+	b[2] = byte((extLen + 1) >> 8)
+	b[3] = byte((extLen + 1) & 0xff)
+	b[4] = byte(extLen)
+
+	i := 5
+	for _, compMethod := range e.Methods {
+		b[i] = byte(compMethod >> 8)
+		b[i+1] = byte(compMethod)
+		i += 2
+	}
+	return e.Len(), io.EOF
+}
+
 // https://github.com/google/boringssl/blob/7d7554b6b3c79e707e25521e61e066ce2b996e4c/ssl/t1_lib.c#L2803
 func BoringPaddingStyle(unpaddedLen int) (int, bool) {
 	if unpaddedLen > 0xff && unpaddedLen < 0x200 {
@@ -700,44 +789,6 @@ func (e *FakeChannelIDExtension) Read(b []byte) (int, error) {
 	b[0] = byte(fakeExtensionChannelID >> 8)
 	b[1] = byte(fakeExtensionChannelID & 0xff)
 	// The length is 0
-	return e.Len(), io.EOF
-}
-
-type FakeCertCompressionAlgsExtension struct {
-	Methods []CertCompressionAlgo
-}
-
-func (e *FakeCertCompressionAlgsExtension) writeToUConn(uc *UConn) error {
-	return nil
-}
-
-func (e *FakeCertCompressionAlgsExtension) Len() int {
-	return 4 + 1 + (2 * len(e.Methods))
-}
-
-func (e *FakeCertCompressionAlgsExtension) Read(b []byte) (int, error) {
-	if len(b) < e.Len() {
-		return 0, io.ErrShortBuffer
-	}
-	// https://tools.ietf.org/html/draft-balfanz-tls-channelid-00
-	b[0] = byte(fakeCertCompressionAlgs >> 8)
-	b[1] = byte(fakeCertCompressionAlgs & 0xff)
-
-	extLen := 2 * len(e.Methods)
-	if extLen > 255 {
-		return 0, errors.New("too many certificate compression methods")
-	}
-
-	b[2] = byte((extLen + 1) >> 8)
-	b[3] = byte((extLen + 1) & 0xff)
-	b[4] = byte(extLen)
-
-	i := 5
-	for _, compMethod := range e.Methods {
-		b[i] = byte(compMethod >> 8)
-		b[i+1] = byte(compMethod)
-		i += 2
-	}
 	return e.Len(), io.EOF
 }
 
