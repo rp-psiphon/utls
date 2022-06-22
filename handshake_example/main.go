@@ -18,8 +18,9 @@ var (
 //var requestAddr = "google.com:443"
 
 var requestHostname = "cloudflare.com" // speaks http2 and TLS 1.3
-// 	var requestAddr = "104.16.133.229:443"
-var requestAddr = "cloudflare.com:443"
+var requestAddr = "104.16.133.229:443"
+
+//var requestAddr = "cloudflare.com:443"
 
 func main() {
 	//hellos to test:
@@ -30,18 +31,22 @@ func main() {
 		HelloIOS_14
 		HelloAndroid_11_OkHttp
 
+
+
+		wireshark filter: ip.addr == 104.16.133.229 and tls.handshake.type == 1
 	*/
-	helloList := []tls.ClientHelloID{tls.HelloChrome_87, tls.HelloChrome_96, tls.HelloIOS_13, tls.HelloIOS_13, tls.HelloIOS_14, tls.HelloAndroid_11_OkHttp}
+	helloList := []tls.ClientHelloID{tls.HelloChrome_87, tls.HelloChrome_96, tls.HelloIOS_13, tls.HelloIOS_14, tls.HelloAndroid_11_OkHttp}
 
 	for _, helloType := range helloList {
 
 		var err error = TlsHandshake(requestHostname, requestAddr, helloType)
+		fmt.Printf("%v", helloType)
 		if err != nil {
 			fmt.Printf("#> TlsHandshake() failed: %+v\n", err)
 		} else {
 			fmt.Println("success!")
 		}
-
+		time.Sleep(1 * time.Second)
 	}
 
 }
@@ -52,15 +57,8 @@ func TlsHandshake(hostname string, addr string, helloType tls.ClientHelloID) err
 	if err != nil {
 		return fmt.Errorf("net.DialTimeout error: %+v", err)
 	}
-	uTlsConn := tls.UClient(dialConn, &config, tls.HelloCustom)
+	uTlsConn := tls.UClient(dialConn, &config, helloType)
 	defer uTlsConn.Close()
-
-	spec := GenerateSpec(helloType)
-	err = uTlsConn.ApplyPreset(&spec)
-
-	if err != nil {
-		return fmt.Errorf("uTlsConn.Handshake() error: %+v", err)
-	}
 
 	err = uTlsConn.Handshake()
 	if err != nil {
@@ -68,12 +66,4 @@ func TlsHandshake(hostname string, addr string, helloType tls.ClientHelloID) err
 	}
 
 	return err
-}
-
-func GenerateSpec(id tls.ClientHelloID) tls.ClientHelloSpec {
-
-	spec := tls.utlsIDToSpec(tls.clientHelloID)
-
-	return spec
-
 }
