@@ -35,8 +35,8 @@ func main() {
 
 		wireshark filter: ip.addr == 104.16.133.229 and tls.handshake.type == 1
 	*/
-	helloList := []tls.ClientHelloID{tls.HelloChrome_87, tls.HelloChrome_96, tls.HelloIOS_13, tls.HelloIOS_14, tls.HelloAndroid_11_OkHttp}
-
+	helloList := []tls.ClientHelloID{tls.HelloChrome_87, tls.HelloChrome_96, tls.HelloIOS_13, tls.HelloIOS_14, tls.HelloAndroid_11_OkHttp, tls.HelloChrome_102}
+	helloList = []tls.ClientHelloID{tls.HelloChrome_102}
 	for _, helloType := range helloList {
 
 		var err error = TlsHandshake(requestHostname, requestAddr, helloType)
@@ -44,6 +44,7 @@ func main() {
 		if err != nil {
 			fmt.Printf("#> TlsHandshake() failed: %+v\n", err)
 		} else {
+			//TODO better condition for success? does the handshake ever fail in this state?
 			fmt.Println("success!")
 		}
 		time.Sleep(1 * time.Second)
