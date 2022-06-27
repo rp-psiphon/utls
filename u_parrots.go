@@ -575,6 +575,7 @@ func utlsIdToSpec(id ClientHelloID) (ClientHelloSpec, error) {
 
 			Extensions: []TLSExtension{
 				&UtlsGREASEExtension{},
+				&SNIExtension{},
 				&UtlsExtendedMasterSecretExtension{},
 				&RenegotiationInfoExtension{Renegotiation: RenegotiateOnceAsClient}, //?
 
