@@ -33,7 +33,7 @@ func main() {
 
 
 
-		wireshark filter: ip.addr == 104.16.133.229 and tls.handshake.type == 1
+		wireshark filter: ip.addr == 104.16.133.0/13 and tls.handshake.type == 1
 	*/
 	helloList := []tls.ClientHelloID{tls.HelloChrome_87, tls.HelloChrome_96, tls.HelloIOS_13, tls.HelloIOS_14, tls.HelloAndroid_11_OkHttp, tls.HelloChrome_102}
 	helloList = []tls.ClientHelloID{tls.HelloChrome_102}
