@@ -1,10 +1,14 @@
 package main
 
-//quick TLS Handshake example
+//quick TLS Handshake example for ClientHello fingerprints of different browser versions
 
 import (
 	"fmt"
+	"io/ioutil"
+
 	"net"
+	"os"
+	"strings"
 	"time"
 
 	tls "github.com/rp-psiphon/utls"
@@ -14,47 +18,68 @@ var (
 	dialTimeout = time.Duration(15) * time.Second
 )
 
-//var requestHostname = "google.com" // speaks http2 and TLS 1.3
-//var requestAddr = "google.com:443"
-
-var requestHostname = "cloudflare.com" // speaks http2 and TLS 1.3
-var requestAddr = "104.16.133.229:443"
-
-//var requestAddr = "cloudflare.com:443"
+type Host struct {
+	Name string
+	IP   string
+}
 
 func main() {
-	//hellos to test:
-	/*
-		HelloChrome_87
-		HelloChrome_96
-		HelloIOS_13
-		HelloIOS_14
-		HelloAndroid_11_OkHttp
 
+	helloList := []tls.ClientHelloID{
+		//from sleeyax/utls
+		tls.HelloChrome_87,
+		tls.HelloChrome_96,
+		tls.HelloIOS_13,
+		tls.HelloIOS_14,
+		tls.HelloAndroid_11_OkHttp,
+		//from rp-psiphon/utls
+		tls.HelloChrome_102,
+		//from Noooste/utls
+		tls.HelloFirefox_99}
 
+	var nameList []string
+	var hostList []Host
 
-		wireshark filter: ip.addr == 104.16.133.0/13 and tls.handshake.type == 1
-	*/
-	helloList := []tls.ClientHelloID{tls.HelloChrome_87, tls.HelloChrome_96, tls.HelloIOS_13, tls.HelloIOS_14, tls.HelloAndroid_11_OkHttp, tls.HelloChrome_102}
-	helloList = []tls.ClientHelloID{tls.HelloChrome_102}
+	logFile, _ := os.Create("handshake_example.log")
+	defer logFile.Close()
+
+	configFile, err := ioutil.ReadFile("CDNs.config")
+	if err == nil {
+		nameList = strings.Split(string(configFile), "\n")
+	}
+
+	for _, hostAddress := range nameList {
+
+		ip, err := DNSLookup(hostAddress)
+		if err == nil {
+			host := Host{hostAddress, (ip + ":443")}
+			hostList = append(hostList, host)
+		}
+	}
 	for _, helloType := range helloList {
 
-		var err error = TlsHandshake(requestHostname, requestAddr, helloType)
-		fmt.Printf("%v", helloType)
-		if err != nil {
-			fmt.Printf("#> TlsHandshake() failed: %+v\n", err)
-		} else {
-			//TODO better condition for success? does the handshake ever fail in this state?
-			fmt.Println("success!")
+		for _, host := range hostList {
+			var err error = TlsHandshake(host.IP, helloType)
+			fmt.Printf("%v %v Hello -> %v (%v)   : ", helloType.Client, helloType.Version, host.Name, host.IP)
+			logFile.WriteString(fmt.Sprintf("%v %v Hello -> %v (%v)   : ", helloType.Client, helloType.Version, host.Name, host.IP))
+
+			if err != nil {
+				fmt.Printf("\n#> TlsHandshake() failed: %+v\n", err)
+				logFile.WriteString(fmt.Sprintf("\n#> TlsHandshake() failed: %+v\n", err))
+
+			} else {
+				fmt.Println("success!")
+				logFile.WriteString("success!\n")
+			}
+			//time.Sleep(1 * time.Second)
 		}
-		time.Sleep(1 * time.Second)
 	}
 
 }
 
-func TlsHandshake(hostname string, addr string, helloType tls.ClientHelloID) error {
-	config := tls.Config{ServerName: hostname}
-	dialConn, err := net.DialTimeout("tcp", addr, dialTimeout)
+func TlsHandshake(hostName string, helloType tls.ClientHelloID) error {
+	config := tls.Config{ServerName: hostName, InsecureSkipVerify: true}
+	dialConn, err := net.DialTimeout("tcp", hostName, dialTimeout)
 	if err != nil {
 		return fmt.Errorf("net.DialTimeout error: %+v", err)
 	}
@@ -67,4 +92,17 @@ func TlsHandshake(hostname string, addr string, helloType tls.ClientHelloID) err
 	}
 
 	return err
+}
+
+func DNSLookup(hostName string) (string, error) {
+	ips, err := net.LookupIP(hostName)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Could not get IPs: %v\n", err)
+		return "", err
+	}
+	for _, ip := range ips {
+		fmt.Printf("%s. IN A %s\n", hostName, ip.String())
+		return ip.String(), nil
+	}
+	return "", err
 }

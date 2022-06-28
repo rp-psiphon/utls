@@ -1,1 +1,3 @@
 *.pcapng
+*.config
+*.log
