@@ -671,17 +671,6 @@ func utlsIdToSpec(id ClientHelloID) (ClientHelloSpec, error) {
 
 				&SignatureAlgorithmsExtension{SupportedSignatureAlgorithms: []SignatureScheme{
 
-					/* TODO
-					Signature Algorithm: ecdsa_secp256r1_sha256 (0x0403)
-					Signature Algorithm: rsa_pss_rsae_sha256 (0x0804)
-					Signature Algorithm: rsa_pkcs1_sha256 (0x0401)
-					Signature Algorithm: ecdsa_secp384r1_sha384 (0x0503)
-					Signature Algorithm: rsa_pss_rsae_sha384 (0x0805)
-					Signature Algorithm: rsa_pkcs1_sha384 (0x0501)
-					Signature Algorithm: rsa_pss_rsae_sha512 (0x0806)
-					Signature Algorithm: rsa_pkcs1_sha512 (0x0601)
-					*/
-
 					ECDSAWithP256AndSHA256,
 					PSSWithSHA256,
 					PKCS1WithSHA256,

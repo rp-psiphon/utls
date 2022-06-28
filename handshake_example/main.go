@@ -1,6 +1,6 @@
 package main
 
-//quick TLS Handshake example for ClientHello fingerprints of different browser versions
+//quick TLS Handshake example for ClientHello fingerprints of different browser versions to CDNs specified in CDNs.config
 
 import (
 	"fmt"
@@ -59,7 +59,7 @@ func main() {
 	for _, helloType := range helloList {
 
 		for _, host := range hostList {
-			var err error = TlsHandshake(host.IP, helloType)
+			var err error = TlsHandshake(host, helloType)
 			fmt.Printf("%v %v Hello -> %v (%v)   : ", helloType.Client, helloType.Version, host.Name, host.IP)
 			logFile.WriteString(fmt.Sprintf("%v %v Hello -> %v (%v)   : ", helloType.Client, helloType.Version, host.Name, host.IP))
 
@@ -77,9 +77,9 @@ func main() {
 
 }
 
-func TlsHandshake(hostName string, helloType tls.ClientHelloID) error {
-	config := tls.Config{ServerName: hostName, InsecureSkipVerify: true}
-	dialConn, err := net.DialTimeout("tcp", hostName, dialTimeout)
+func TlsHandshake(host Host, helloType tls.ClientHelloID) error {
+	config := tls.Config{ServerName: host.Name, InsecureSkipVerify: true}
+	dialConn, err := net.DialTimeout("tcp", host.IP, dialTimeout)
 	if err != nil {
 		return fmt.Errorf("net.DialTimeout error: %+v", err)
 	}
