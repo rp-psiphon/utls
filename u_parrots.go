@@ -549,7 +549,7 @@ func utlsIdToSpec(id ClientHelloID) (ClientHelloSpec, error) {
 				&UtlsPaddingExtension{GetPaddingLen: BoringPaddingStyle},
 			}}, nil
 
-	case HelloFirefox_99:
+	case HelloFirefox_99, HelloFirefox_102:
 		return ClientHelloSpec{
 			TLSVersMin: VersionTLS10,
 			TLSVersMax: VersionTLS13,
@@ -590,9 +590,16 @@ func utlsIdToSpec(id ClientHelloID) (ClientHelloSpec, error) {
 				&SupportedPointsExtension{SupportedPoints: []byte{ //ec_point_formats
 					pointFormatUncompressed,
 				}},
+				&SessionTicketExtension{},
 				&ALPNExtension{AlpnProtocols: []string{"h2", "http/1.1"}}, //application_layer_protocol_negotiation
 				&StatusRequestExtension{},
-				//delegated_credentials
+
+				&GenericExtension{34, []byte{00, 8,
+					04, 03,
+					05, 03,
+					06, 03,
+					02, 03}}, //delegated_credentials
+
 				&KeyShareExtension{[]KeyShare{
 					{Group: X25519},
 					{Group: CurveP256}, //key_share
@@ -600,8 +607,6 @@ func utlsIdToSpec(id ClientHelloID) (ClientHelloSpec, error) {
 				&SupportedVersionsExtension{[]uint16{
 					VersionTLS13, //supported_versions
 					VersionTLS12,
-					VersionTLS11,
-					VersionTLS10,
 				}},
 				&SignatureAlgorithmsExtension{SupportedSignatureAlgorithms: []SignatureScheme{ //signature_algorithms
 					ECDSAWithP256AndSHA256,
@@ -667,7 +672,7 @@ func utlsIdToSpec(id ClientHelloID) (ClientHelloSpec, error) {
 
 				&SessionTicketExtension{},
 				&ALPNExtension{AlpnProtocols: []string{"h2", "http/1.1"}},
-				&StatusRequestExtension{}, //TODO         Certificate Status Type: OCSP (1)
+				&StatusRequestExtension{},
 
 				&SignatureAlgorithmsExtension{SupportedSignatureAlgorithms: []SignatureScheme{
 
@@ -698,7 +703,6 @@ func utlsIdToSpec(id ClientHelloID) (ClientHelloSpec, error) {
 					CertCompressionBrotli,
 				}},
 
-				//&GenericExtension{17513, []byte{00, 03, 02, 104, 50}},
 				&ALPSExtension{SupportedProtocols: []string{"h2"}},
 
 				&UtlsGREASEExtension{},

@@ -34,7 +34,11 @@ func main() {
 		tls.HelloAndroid_11_OkHttp,
 		//from rp-psiphon/utls
 		tls.HelloChrome_102,
-		//from Noooste/utls
+		tls.HelloFirefox_102,
+		//from Noooste/utls, identical to Firefox102
+		tls.HelloFirefox_99}
+
+	helloList = []tls.ClientHelloID{
 		tls.HelloFirefox_99}
 
 	var nameList []string
@@ -97,11 +101,11 @@ func TlsHandshake(host Host, helloType tls.ClientHelloID) error {
 func DNSLookup(hostName string) (string, error) {
 	ips, err := net.LookupIP(hostName)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Could not get IPs: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Could not get IPs for %s: %v\n", hostName, err)
 		return "", err
 	}
 	for _, ip := range ips {
-		fmt.Printf("%s. IN A %s\n", hostName, ip.String())
+		//fmt.Printf("%s. IN A %s\n", hostName, ip.String())
 		return ip.String(), nil
 	}
 	return "", err
